@@ -4,8 +4,8 @@ cmake_minimum_required(VERSION 3.10)
 cmake_policy(SET CMP0048 NEW)
 
 option(ENABLE_MBEDTLS "Build with mBedTLS support instead of OpenSSL" OFF)
-option(ENABLE_OPENSSL_LEGACY
-       "Use the legacy OpenSSL 1.1.1 backend. Default is the OpenSSL 3.5 backend."
+option(ENABLE_OPENSSL3
+       "Use the OpenSSL 3.5 provider-based backend. Default is OpenSSL 1.1.1 compatibility."
        OFF)
 
 # This project is semantically versioned.
@@ -14,7 +14,7 @@ option(ENABLE_OPENSSL_LEGACY
 # Increment MAJOR when introducing API/ABI breaking changes (i.e., not compatible with previous version)
 # Increment MINOR when API/ABI is backward compatible but different (e.g., new features added)
 # Increment PATCH when API is unchanged (bug/internal fixes)
-if (ENABLE_OPENSSL_LEGACY OR ENABLE_MBEDTLS)
+if (NOT ENABLE_OPENSSL3 OR ENABLE_MBEDTLS)
     set(MAJOR 2)
     set(MINOR 2)
     set(PATCH 1)
@@ -55,8 +55,8 @@ if (ENABLE_RDK_BUILD)
     add_definitions(-DRDK_BUILD)
 endif ()
 
-if (ENABLE_MBEDTLS AND ENABLE_OPENSSL_LEGACY)
-    message(FATAL_ERROR "ENABLE_OPENSSL_LEGACY cannot be used together with ENABLE_MBEDTLS.")
+if (ENABLE_MBEDTLS AND ENABLE_OPENSSL3)
+    message(FATAL_ERROR "ENABLE_OPENSSL3 cannot be used together with ENABLE_MBEDTLS.")
 endif ()
 
 set(CERTIFIER_BACKEND_DEFINITIONS)
@@ -75,16 +75,16 @@ if (ENABLE_MBEDTLS)
     set(OPENSSL_BACKEND_NAME "mbedTLS")
 
 else ()
-    if (ENABLE_OPENSSL_LEGACY)
-        set(OPENSSL_BACKEND_NAME "legacy OpenSSL")
-        message(STATUS "Using ${OPENSSL_BACKEND_NAME} backend (OpenSSL >= ${OPENSSL_LEGACY_MIN_VERSION})")
-        find_package(OpenSSL ${OPENSSL_LEGACY_MIN_VERSION} REQUIRED COMPONENTS Crypto SSL)
-        list(APPEND CERTIFIER_BACKEND_DEFINITIONS CERTIFIER_OPENSSL_LEGACY)
-    else ()
+    if (ENABLE_OPENSSL3)
         set(OPENSSL_BACKEND_NAME "OpenSSL 3.5")
         message(STATUS "Using ${OPENSSL_BACKEND_NAME} backend (OpenSSL >= ${OPENSSL_MODERN_MIN_VERSION})")
         find_package(OpenSSL ${OPENSSL_MODERN_MIN_VERSION} REQUIRED COMPONENTS Crypto SSL)
         list(APPEND CERTIFIER_BACKEND_DEFINITIONS CERTIFIER_OPENSSL3)
+    else ()
+        set(OPENSSL_BACKEND_NAME "legacy OpenSSL")
+        message(STATUS "Using ${OPENSSL_BACKEND_NAME} backend (OpenSSL >= ${OPENSSL_LEGACY_MIN_VERSION})")
+        find_package(OpenSSL ${OPENSSL_LEGACY_MIN_VERSION} REQUIRED COMPONENTS Crypto SSL)
+        list(APPEND CERTIFIER_BACKEND_DEFINITIONS CERTIFIER_OPENSSL_LEGACY)
     endif ()
 
     set(OPENSSL_BACKEND_LIBRARIES OpenSSL::Crypto OpenSSL::SSL)
