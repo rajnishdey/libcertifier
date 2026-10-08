@@ -14,7 +14,7 @@ xref:libcertifier.adoc[*Back to Manual*]
 | cMocka | 1.1 | https://cmocka.org/ Ubuntu 19.x - Consider using `sudo apt-get install libcmocka-dev`
 | mbedTLS | Optional | Ubuntu 19.x - Consider using `sudo apt-get install -y libmbedtls-dev` +
 cURL has to be compiled with mbedTLS.  Please see -  `+https://tls.mbed.org/kb/how-to/compile-curl-with-mbedtls+`
-| Valgrind | Optional | Ubuntu 18.x - Consider using `sudo apt-get install -y valgrind` |
+| Valgrind | Optional | Ubuntu 18.x - Consider using `sudo apt-get install -y valgrind` 
 |=======
 === Build types
 
