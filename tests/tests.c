@@ -743,6 +743,78 @@ static void test_ecc_key(void)
     XFREE(csr);
 }
 
+static void test_security_create_new_ec_key(void)
+{
+    unsigned char public_key[65]  = { 0 };
+    unsigned char private_key[32] = { 0 };
+
+    ECC_KEY * key = security_create_new_ec_key(_certifier_get_properties(certifier), "prime256v1");
+    assert_non_null(key);
+
+    assert_int_equal(65, security_serialize_raw_public_key(key, public_key, sizeof(public_key)));
+    assert_int_equal(32, security_serialize_raw_private_key(key, private_key, sizeof(private_key)));
+    assert_int_equal(0x04, public_key[0]);
+
+    assert_int_equal(0, security_serialize_raw_public_key(key, public_key, sizeof(public_key) - 1));
+    assert_int_equal(0, security_serialize_raw_private_key(key, private_key, sizeof(private_key) - 1));
+
+    security_free_eckey(key);
+
+    assert_null(security_create_new_ec_key(_certifier_get_properties(certifier), "invalid-curve"));
+}
+
+static void test_security_create_new_ec_key_compatibility(void)
+{
+    unsigned char public_key[65]       = { 0 };
+    unsigned char duplicate_public[65] = { 0 };
+    unsigned char private_key[32]      = { 0 };
+    unsigned char duplicate_private[32] = { 0 };
+    unsigned char * der_public_key     = NULL;
+    int der_public_key_len             = 0;
+    const unsigned char message[]      = "openssl backend compatibility";
+    unsigned char digest[32]           = { 0 };
+    char * signature                   = NULL;
+
+    ECC_KEY * generated = security_create_new_ec_key(_certifier_get_properties(certifier), "prime256v1");
+    assert_non_null(generated);
+
+    ECC_KEY * duplicate = security_dup_eckey(generated);
+    assert_non_null(duplicate);
+
+    assert_int_equal(65, security_serialize_raw_public_key(generated, public_key, sizeof(public_key)));
+    assert_int_equal(65, security_serialize_raw_public_key(duplicate, duplicate_public, sizeof(duplicate_public)));
+    assert_memory_equal(public_key, duplicate_public, sizeof(public_key));
+
+    assert_int_equal(32, security_serialize_raw_private_key(generated, private_key, sizeof(private_key)));
+    assert_int_equal(32, security_serialize_raw_private_key(duplicate, duplicate_private, sizeof(duplicate_private)));
+    assert_memory_equal(private_key, duplicate_private, sizeof(private_key));
+
+    der_public_key_len = security_serialize_der_public_key(generated, &der_public_key);
+    assert_true(der_public_key_len > 0);
+
+    ECC_KEY * reloaded = security_get_key_from_der(der_public_key, der_public_key_len);
+    assert_non_null(reloaded);
+    assert_int_equal(65, security_serialize_raw_public_key(reloaded, duplicate_public, sizeof(duplicate_public)));
+    assert_memory_equal(public_key, duplicate_public, sizeof(public_key));
+
+    assert_int_equal(0, security_sha256(digest, message, sizeof(message) - 1));
+    signature = security_sign_hash_b64(generated, digest, sizeof(digest));
+    assert_non_null(signature);
+    assert_int_equal(0, security_verify_signature(reloaded, signature, message, sizeof(message) - 1)
+                             .application_error_code);
+
+    XFREE(signature);
+    XFREE(der_public_key);
+    security_free_eckey(reloaded);
+    security_free_eckey(duplicate);
+    security_free_eckey(generated);
+}
+
+static void test_security_get_key_from_cert(void)
+{
+    assert_null(security_get_key_from_cert(NULL));
+}
+
 static void test_verify_signature_1(void)
 {
 
@@ -1022,6 +1094,9 @@ void test_x509_cert(void)
     assert_non_null(cert_list);
     cert1 = security_cert_list_get(cert_list, 0);
     assert_non_null(cert1);
+    ECC_KEY * cert_public_key = security_get_key_from_cert(cert1);
+    assert_non_null(cert_public_key);
+    security_free_eckey(cert_public_key);
     cert1_ou = security_get_field_from_cert(cert1, "organizationalUnitName");
     assert_string_equal(cert1_ou, "1GotZUkz6BRsRQL4rAWVTvg4ugZD5PenHE");
     XFREE(cert1_ou);
@@ -1495,7 +1570,10 @@ int main(int argc, char ** argv)
         const struct CMUnitTest tests[] = {
             CREATE_TEST(test_base64), CREATE_TEST(test_base58), CREATE_TEST(test_file_utils), CREATE_TEST(test_random_val),
             CREATE_TEST(test_str_utils), CREATE_TEST(test_set_curl_error), CREATE_TEST(test_sha256_ripemd_b58),
-            CREATE_TEST(test_ecc_key), CREATE_TEST(test_verify_signature_1), CREATE_TEST(test_verify_signature_2),
+            CREATE_TEST(test_ecc_key), CREATE_TEST(test_security_create_new_ec_key),
+            CREATE_TEST(test_security_create_new_ec_key_compatibility),
+            CREATE_TEST(test_security_get_key_from_cert),
+            CREATE_TEST(test_verify_signature_1), CREATE_TEST(test_verify_signature_2),
             CREATE_TEST(test_x509_cert),
 
             CREATE_TEST(test_pkcs12),
@@ -1543,6 +1621,9 @@ int main(int argc, char ** argv)
         RUN_TEST(test_set_curl_error);
         RUN_TEST(test_sha256_ripemd_b58);
         RUN_TEST(test_ecc_key);
+        RUN_TEST(test_security_create_new_ec_key);
+        RUN_TEST(test_security_create_new_ec_key_compatibility);
+        RUN_TEST(test_security_get_key_from_cert);
         RUN_TEST(test_verify_signature_1);
         RUN_TEST(test_verify_signature_2);
         RUN_TEST(test_x509_cert);
