@@ -119,6 +119,36 @@ static bool is_mac_valid(const char * mac, size_t mac_len)
     return (6 == sscanf(mac, "%02X:%02X:%02X:%02X:%02X:%02X", &bytes[5], &bytes[4], &bytes[3], &bytes[2], &bytes[1], &bytes[0]));
 }
 
+#ifdef RDK_BUILD
+static char * create_device_identifier_san(const get_cert_param_t * params)
+{
+    size_t length;
+    char * value;
+
+    if (params->device_identifier_version == NULL && params->soc_id == NULL && params->device_mac == NULL &&
+        params->device_sn == NULL && params->pmi == NULL)
+        return NULL;
+
+    if (params->device_identifier_version == NULL || params->soc_id == NULL || params->device_mac == NULL ||
+        params->device_sn == NULL || params->pmi == NULL)
+        return NULL;
+
+    if (params->device_identifier_version[0] == '\0' || params->soc_id[0] == '\0' ||
+        params->device_mac[0] == '\0' || params->device_sn[0] == '\0' || params->pmi[0] == '\0')
+        return NULL;
+
+    length = (size_t) snprintf(NULL, 0, "%s:%s:%s:%s:%s", params->device_identifier_version, params->soc_id,
+                               params->device_mac, params->device_sn, params->pmi);
+    value = XMALLOC(length + 1);
+    if (value != NULL)
+    {
+        snprintf(value, length + 1, "%s:%s:%s:%s:%s", params->device_identifier_version, params->soc_id,
+                 params->device_mac, params->device_sn, params->pmi);
+    }
+    return value;
+}
+#endif
+
 XPKI_CLIENT_ERROR_CODE xc_set_source_id(const char * source_id)
 {
     if (source_id)
@@ -194,6 +224,11 @@ XPKI_CLIENT_ERROR_CODE xc_get_default_cert_param(get_cert_param_t * params)
     params->dns_san          = NULL;
     params->ip_san           = NULL;
     params->email_san        = NULL;
+    params->device_identifier_version = NULL;
+    params->soc_id           = NULL;
+    params->device_mac       = NULL;
+    params->device_sn        = NULL;
+    params->pmi              = NULL;
     params->domain           = NULL;
     params->serial_number    = NULL;
     params->crt              = NULL;
@@ -399,6 +434,31 @@ XPKI_CLIENT_ERROR_CODE xc_get_cert(get_cert_param_t * params)
     {
         ReturnErrorOnFailure(certifier_set_property(certifier, CERTIFIER_OPT_EMAIL_SAN, params->email_san));
     }
+#ifdef RDK_BUILD
+    ReturnErrorOnFailure(certifier_set_property(certifier, CERTIFIER_OPT_DEVICE_IDENTIFIER_SAN, NULL));
+    if (!(params->lite == false && params->use_scopes == true))
+    {
+        char * device_identifier_san = create_device_identifier_san(params);
+        if (params->device_identifier_version != NULL || params->soc_id != NULL || params->device_mac != NULL ||
+            params->device_sn != NULL || params->pmi != NULL)
+        {
+            int property_error;
+
+            if (device_identifier_san == NULL)
+            {
+                return XPKI_CLIENT_INVALID_ARGUMENT;
+            }
+            property_error =
+                certifier_set_property(certifier, CERTIFIER_OPT_DEVICE_IDENTIFIER_SAN, device_identifier_san);
+            XFREE(device_identifier_san);
+            ReturnErrorOnFailure(property_error);
+        }
+        else
+        {
+            XFREE(device_identifier_san);
+        }
+    }
+#endif
     if (params->crt == NULL)
     {
         ReturnErrorOnFailure(xc_create_crt(params->auth_type));

@@ -148,6 +148,11 @@ typedef struct
     const char * dns_san;
     const char * ip_san;
     const char * email_san;
+    const char * device_identifier_version;
+    const char * soc_id;
+    const char * device_mac;
+    const char * device_sn;
+    const char * pmi;
     const char * common_name;
     const char * domain;
     X509_CERT  * cert_x509_out;

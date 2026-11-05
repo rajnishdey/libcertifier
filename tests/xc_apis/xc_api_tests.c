@@ -70,6 +70,33 @@ static void test_get_cert()
     TEST_ASSERT_EQUAL_INT(XPKI_CLIENT_SUCCESS, error);
 }
 
+#ifdef RDK_BUILD
+static void test_get_cert_device_identifier_san()
+{
+    get_cert_param_t params = { 0 };
+
+    xc_get_default_cert_param(&params);
+
+    params.auth_type           = XPKI_AUTH_X509;
+    params.input_p12_path      = "seed.p12";
+    params.input_p12_password  = "changeit";
+    params.output_p12_path     = "output-xc-device-identifier-san.p12";
+    params.output_p12_password = "newpass";
+    params.overwrite_p12       = true;
+    params.profile_name        = "Xfinity_Default_Issuing_ECC_ICA";
+    params.validity_days       = 90;
+    params.lite                = true;
+    params.mac_address         = "00:B0:D0:63:C2:26";
+    params.device_identifier_version = "v1";
+    params.soc_id                    = "0020010F10182799";
+    params.device_mac                = "483E5EAFA87E";
+    params.device_sn                 = "XI11SCR2208A0963";
+    params.pmi                       = "SCXI11BEI";
+
+    TEST_ASSERT_EQUAL_INT(XPKI_CLIENT_SUCCESS, xc_get_cert(&params));
+}
+#endif
+
 static void test_get_cert_auth_token()
 {
     XPKI_CLIENT_ERROR_CODE error;
@@ -243,6 +270,9 @@ int main(int argc, char ** argv)
     UNITY_BEGIN();
 
     RUN_TEST(test_get_cert);
+#ifdef RDK_BUILD
+    RUN_TEST(test_get_cert_device_identifier_san);
+#endif
     if (argv[1] != NULL)
     {
         token = argv[1];

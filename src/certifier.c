@@ -1428,6 +1428,7 @@ char * certifier_create_csr_post_data(CertifierPropMap * props, const unsigned c
     const char * dns_san             = property_get(props, CERTIFIER_OPT_DNS_SAN);
     const char * ip_san              = property_get(props, CERTIFIER_OPT_IP_SAN);
     const char * email_san           = property_get(props, CERTIFIER_OPT_EMAIL_SAN);
+    const char * device_identifier_san = property_get(props, CERTIFIER_OPT_DEVICE_IDENTIFIER_SAN);
     const char * domain              = property_get(props, CERTIFIER_OPT_DOMAIN);
     const char * profile_name        = property_get(props, CERTIFIER_OPT_PROFILE_NAME);
     const char * product_id          = property_get(props, CERTIFIER_OPT_PRODUCT_ID);
@@ -1507,6 +1508,16 @@ char * certifier_create_csr_post_data(CertifierPropMap * props, const unsigned c
     {
         log_debug("\nemails Id :\n%s\n", email_san);
         json_object_dotset_value(root_object, "emails", json_parse_string(email_san));
+    }
+
+    if (util_is_not_empty(device_identifier_san))
+    {
+        JSON_Value * other_name_value = json_value_init_object();
+        JSON_Object * other_name       = json_value_get_object(other_name_value);
+
+        json_object_set_string(other_name, "oid", "1.3.6.1.4.1.17270.500.5");
+        json_object_set_string(other_name, "value", device_identifier_san);
+        json_object_set_value(root_object, "otherName", other_name_value);
     }
 
     if (num_days > 0)

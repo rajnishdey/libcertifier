@@ -79,7 +79,8 @@ typedef enum CERTIFIER_OPT
     CERTIFIER_OPT_DNS_SAN   = 30,
     CERTIFIER_OPT_IP_SAN    = 31,
     CERTIFIER_OPT_EMAIL_SAN = 32,
-    // 33 - 36 are unused
+    CERTIFIER_OPT_DEVICE_IDENTIFIER_SAN = 33,
+    // 34 - 36 are unused
     CERTIFIER_OPT_LOG_MAX_SIZE = 37,
     // 38,39 are unused
     // 40 - 43 are unused
